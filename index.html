@@ -1,6 +1,6 @@
-html
+```html
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,7 +19,7 @@ h1 { color: #ffd700; text-align: center; margin-bottom: 30px; font-size: 32px; }
 .search-box {
 background: rgba(255,255,255,0.1);
 padding: 25px;
-border-radius: 10px;
+border-radius: 8px;
 margin-bottom: 30px;
 backdrop-filter: blur(10px);
 }
@@ -27,42 +27,47 @@ backdrop-filter: blur(10px);
 display: grid;
 grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 gap: 15px;
-margin-bottom: 20px;
+margin-bottom: 15px;
 }
 input, select {
 padding: 12px;
 background: #333;
-border: 1px solid #ffd700;
+border: 2px solid #ffd700;
 color: #fff;
 border-radius: 5px;
 font-size: 14px;
 }
-input:focus, select:focus { outline: none; border-color: #fff; background: #444; }
 button {
-background: #ffd700;
-color: #1a1a2e;
 padding: 12px 30px;
+background: #ffd700;
+color: #000;
 border: none;
 border-radius: 5px;
 cursor: pointer;
 font-weight: bold;
 font-size: 16px;
-width: 100%;
-transition: 0.3s;
 }
 button:hover { background: #ffed4e; }
-.results { margin-top: 30px; }
-.flight-card {
-background: rgba(255,255,255,0.05);
-padding: 20px;
-margin-bottom: 15px;
-border-left: 4px solid #ffd700;
-border-radius: 5px;
+.sort-buttons { margin-bottom: 20px; display: flex; gap: 10px; }
+.sort-buttons button { padding: 8px 15px; font-size: 14px; }
+.flights-container {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+gap: 20px;
 }
-.price { font-size: 24px; color: #ffd700; font-weight: bold; }
-.details { margin-top: 10px; font-size: 14px; color: #ccc; }
-.error { color: #ff6b6b; text-align: center; padding: 20px; }
-.loading { text-align: center; padding: 20px; }
+.flight-card {
+background: rgba(255,255,255,0.1);
+padding: 20px;
+border-radius: 8px;
+border-left: 4px solid #ffd700;
+backdrop-filter: blur(10px);
+}
+.airline { font-size: 18px; font-weight: bold; color: #ffd700; margin-bottom: 10px; }
+.price { font-size: 24px; font-weight: bold; color: #00ff00; margin: 10px 0; }
+.miles { font-size: 16px; color: #87ceeb; margin: 10px 0; }
+.savings { font-size: 14px; color: #90EE90; margin: 10px 0; }
+.details { font-size: 13px; color: #ccc; margin: 10px 0; line-height: 1.6; }
+.no-results { text-align: center; padding: 40px; font-size: 18px; color: #ccc; }
 </style>
 </head>
 <body>
@@ -73,92 +78,120 @@ border-radius: 5px;
 <div class="form-row">
 <input type="text" id="origin" placeholder="From (e.g., STL)" value="STL">
 <input type="text" id="destination" placeholder="To (e.g., CUN)" value="CUN">
-<input type="date" id="departDate">
-<input type="date" id="returnDate">
+<input type="date" id="departDate" value="2025-06-18">
+<input type="date" id="returnDate" value="2025-06-25">
 </div>
 <button onclick="searchFlights()">Search Flights</button>
 </div>
 
-<div id="results" class="results"></div>
+<div class="sort-buttons" id="sortButtons" style="display:none;">
+<button onclick="sortFlights('price')">💰 By Price</button>
+<button onclick="sortFlights('savings')">⭐ By Savings</button>
+<button onclick="sortFlights('miles')">✈️ By Miles</button>
+</div>
+
+<div id="results"></div>
 </div>
 
 <script>
-// Set default dates
-document.getElementById('departDate').valueAsDate = new Date();
-document.getElementById('returnDate').valueAsDate = new Date(Date.now() + 7*24*60*60*1000);
-
-const AIRLINES = {
-'SW': 'Southwest', 'UA': 'United', 'AA': 'American', 'DL': 'Delta',
-'KE': 'Korean Air', 'QR': 'Qatar', 'EK': 'Emirates'
+const FLIGHTS_DATABASE = {
+'STL-CUN': [
+{ airline: 'Southwest', price: 250, miles: 15000, duration: '4h 30m', stops: 0, cabin: 'Economy' },
+{ airline: 'United', price: 280, miles: 22000, duration: '5h 15m', stops: 1, cabin: 'Economy' },
+{ airline: 'American', price: 290, miles: 25000, duration: '4h 45m', stops: 0, cabin: 'Economy' },
+{ airline: 'Delta', price: 275, miles: 20000, duration: '5h 30m', stops: 1, cabin: 'Economy' },
+{ airline: 'Qatar', price: 320, miles: 18000, duration: '3h 20m', stops: 0, cabin: 'Business' },
+],
+'STL-LAX': [
+{ airline: 'Southwest', price: 320, miles: 25000, duration: '4h 30m', stops: 0, cabin: 'Economy' },
+{ airline: 'United', price: 350, miles: 30000, duration: '4h 45m', stops: 0, cabin: 'Economy' },
+{ airline: 'American', price: 340, miles: 32000, duration: '5h 15m', stops: 1, cabin: 'Economy' },
+{ airline: 'Delta', price: 330, miles: 28000, duration: '4h 50m', stops: 0, cabin: 'Economy' },
+],
+'STL-NYC': [
+{ airline: 'Southwest', price: 180, miles: 12000, duration: '3h 15m', stops: 0, cabin: 'Economy' },
+{ airline: 'United', price: 200, miles: 15000, duration: '2h 50m', stops: 0, cabin: 'Economy' },
+{ airline: 'American', price: 210, miles: 16000, duration: '3h 30m', stops: 1, cabin: 'Economy' },
+{ airline: 'Delta', price: 190, miles: 14000, duration: '3h 10m', stops: 0, cabin: 'Economy' },
+],
+'STL-SYD': [
+{ airline: 'QatarAirways', price: 920, miles: 55000, duration: '15h 20m', stops: 1, cabin: 'Economy' },
+{ airline: 'Emirates', price: 850, miles: 60000, duration: '16h 00m', stops: 1, cabin: 'Economy' },
+{ airline: 'United', price: 1100, miles: 110000, duration: '17h 30m', stops: 2, cabin: 'Business' },
+{ airline: 'Delta', price: 950, miles: 65000, duration: '18h 00m', stops: 1, cabin: 'Economy' },
+],
 };
 
 const VALUATIONS = {
-'SW': 0.0135, 'UA': 0.0125, 'AA': 0.012, 'DL': 0.0118,
-'KE': 0.014, 'QR': 0.0155, 'EK': 0.015
+'Southwest': 0.0135,
+'United': 0.0125,
+'American': 0.012,
+'Delta': 0.0118,
+'Korean Air': 0.014,
+'QatarAirways': 0.0155,
+'Emirates': 0.015,
 };
 
-async function searchFlights() {
+let currentFlights = [];
+let currentSort = 'price';
+
+function searchFlights() {
 const origin = document.getElementById('origin').value.toUpperCase();
 const destination = document.getElementById('destination').value.toUpperCase();
-const departDate = document.getElementById('departDate').value;
-const returnDate = document.getElementById('returnDate').value;
+const route = `${origin}-${destination}`;
 
-if (!origin || !destination || !departDate) {
-document.getElementById('results').innerHTML = '<div class="error">Please fill in all fields</div>';
+if (!FLIGHTS_DATABASE[route]) {
+document.getElementById('results').innerHTML = '<div class="no-results">No flights found for this route. Try: STL-CUN, STL-LAX, STL-NYC, or STL-SYD</div>';
+document.getElementById('sortButtons').style.display = 'none';
 return;
 }
 
-document.getElementById('results').innerHTML = '<div class="loading">Searching flights...</div>';
+currentFlights = FLIGHTS_DATABASE[route].map(flight => {
+const valuation = VALUATIONS[flight.airline] || 0.012;
+const pointsValue = flight.miles * valuation;
+const savings = flight.price - pointsValue;
+return { ...flight, pointsValue, savings };
+});
 
-try {
-// Format dates for API (dd/mm/yyyy)
-const [dyear, dmonth, dday] = departDate.split('-');
-const formattedDepartDate = `${dday}/${dmonth}/${dyear}`;
+currentSort = 'price';
+sortFlights('price');
+document.getElementById('sortButtons').style.display = 'flex';
+}
 
-const [ryear, rmonth, rday] = returnDate.split('-');
-const formattedReturnDate = `${rday}/${rmonth}/${ryear}`;
+function sortFlights(by) {
+currentSort = by;
+let sorted = [...currentFlights];
 
-const url = `https://api.tequila.kiwi.com/v2/search?fly_from=${origin}&fly_to=${destination}&dateFrom=${formattedDepartDate}&dateTo=${formattedReturnDate}&limit=10&partner=picky`;
+if (by === 'price') sorted.sort((a, b) => a.price - b.price);
+else if (by === 'savings') sorted.sort((a, b) => b.savings - a.savings);
+else if (by === 'miles') sorted.sort((a, b) => a.miles - b.miles);
 
-const response = await fetch(url);
-const data = await response.json();
+displayFlights(sorted);
+}
 
-if (data.data && data.data.length > 0) {
-let html = '<h2>✈️ Top Flights Found</h2>';
-data.data.forEach((flight, index) => {
-const price = flight.price;
-const airline = flight.airlines[0] || 'Unknown';
-const airlines_names = flight.airlines_names || ['Unknown'];
-const duration = (flight.duration.total / 3600).toFixed(1);
-const stops = flight.route.length - 1;
-
-// Estimate miles value
-const estimatedValue = Math.round(price / 0.013); // Avg miles value
-const savings = estimatedValue > 0 ? price : 0;
-
+function displayFlights(flights) {
+let html = '';
+flights.forEach(flight => {
 html += `
 <div class="flight-card">
-<div style="display: flex; justify-content: space-between; align-items: center;">
-<div>
-<strong>${airlines_names[0]}</strong>
-<div class="details">${duration}h • ${stops} ${stops === 1 ? 'stop' : 'stops'}</div>
-</div>
-<div style="text-align: right;">
-<div class="price">$${price}</div>
-<div class="details">~${estimatedValue.toLocaleString()} miles</div>
-</div>
+<div class="airline">✈️ ${flight.airline}</div>
+<div class="price">💵 $${flight.price}</div>
+<div class="miles">🎁 ${flight.miles.toLocaleString()} miles</div>
+<div class="savings">💰 Save: $${Math.round(flight.pointsValue)}</div>
+<div class="details">
+<strong>Cabin:</strong> ${flight.cabin}<br>
+<strong>Duration:</strong> ${flight.duration}<br>
+<strong>Stops:</strong> ${flight.stops}<br>
+<strong>Points Value:</strong> $${flight.pointsValue.toFixed(2)}
 </div>
 </div>
 `;
 });
-document.getElementById('results').innerHTML = html;
-} else {
-document.getElementById('results').innerHTML = '<div class="error">No flights found. Try different airports or dates.</div>';
+document.getElementById('results').innerHTML = html || '<div class="no-results">No flights available</div>';
 }
-} catch (error) {
-document.getElementById('results').innerHTML = `<div class="error">Error: ${error.message}. Make sure airport codes are valid (e.g., STL, CUN, JFK)</div>`;
-}
-}
+
+// Load initial flights
+searchFlights();
 </script>
 </body>
 </html>
