@@ -1,64 +1,102 @@
 ```html
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Flight Miles Optimizer</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight & Miles Optimizer</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: Arial; background: #1a1a2e; color: #fff; padding: 20px; }
-.container { max-width: 1000px; margin: 0 auto; }
-h1 { color: #ffd700; text-align: center; margin-bottom: 20px; }
-.search-box { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-input, select { width: 100%; padding: 10px; margin: 5px 0; background: #333; border: 1px solid #ffd700; color: #fff; }
-button { width: 100%; padding: 12px; background: #ffd700; color: #000; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; padding: 20px; min-height: 100vh; }
+.container { max-width: 1200px; margin: 0 auto; }
+h1 { color: #ffd700; text-align: center; margin-bottom: 30px; font-size: 32px; }
+.search-box { background: rgba(255,255,255,0.1); padding: 25px; border-radius: 12px; margin-bottom: 30px; backdrop-filter: blur(10px); }
+.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px; }
+input, select { padding: 12px; background: #333; border: 1px solid #ffd700; color: #fff; border-radius: 6px; font-size: 14px; }
+input:focus, select:focus { outline: none; border-color: #fff; background: #444; }
+button { padding: 12px 30px; background: #ffd700; color: #1a1a2e; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; }
 button:hover { background: #ffed4e; }
-.flights { margin-top: 30px; }
-.flight { background: rgba(255,255,255,0.05); padding: 15px; margin: 10px 0; border-left: 4px solid #ffd700; border-radius: 5px; }
-.flight h3 { color: #ffd700; margin-bottom: 10px; }
+.sort-buttons { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.sort-btn { padding: 10px 15px; background: rgba(255,215,0,0.2); border: 1px solid #ffd700; color: #ffd700; border-radius: 5px; cursor: pointer; font-size: 13px; }
+.sort-btn.active { background: #ffd700; color: #1a1a2e; }
+.flights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+.flight-card { background: rgba(255,215,0,0.05); border: 1px solid #ffd700; border-radius: 10px; padding: 20px; }
+.flight-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #ffd700; padding-bottom: 10px; }
+.airline { font-weight: bold; font-size: 16px; }
+.price { color: #ffd700; font-size: 24px; font-weight: bold; }
+.flight-details { font-size: 13px; line-height: 1.8; color: #ddd; }
+.miles-value { background: rgba(76,175,80,0.2); border: 1px solid #4caf50; color: #4caf50; padding: 10px; border-radius: 5px; margin-top: 10px; font-size: 13px; }
+.savings { color: #4caf50; font-weight: bold; }
+.error { color: #ff6b6b; text-align: center; padding: 20px; }
+.no-results { text-align: center; color: #aaa; padding: 40px; }
 </style>
 </head>
 <body>
 <div class="container">
-<h1>✈️ Flight & Miles Optimizer</h1>
+<h1>✈️ Flight & Airline Miles Optimizer</h1>
 
 <div class="search-box">
-<input type="text" id="origin" placeholder="From (STL, NYC, LAX)" value="STL">
-<input type="text" id="destination" placeholder="To (CUN, LAX, ORD)" value="CUN">
-<input type="date" id="departure" value="2025-02-01">
-<input type="date" id="return" value="2025-02-08">
-<button onclick="searchFlights()">Search Flights</button>
-<div id="error" style="color: red; margin-top: 10px;"></div>
+<div class="form-row">
+<input type="text" id="origin" placeholder="From (e.g., STL)" value="STL">
+<input type="text" id="destination" placeholder="To (e.g., CUN)" value="CUN">
+<input type="date" id="departDate" value="2025-06-18">
+<select id="cabin">
+<option value="economy">Economy</option>
+<option value="business">Business</option>
+<option value="first">First Class</option>
+</select>
+</div>
+<button onclick="searchFlights()">🔍 Search Flights</button>
 </div>
 
-<div class="flights" id="results"></div>
+<div id="sortButtons" class="sort-buttons" style="display:none;">
+<button class="sort-btn active" onclick="sortFlights('price')">💰 By Price</button>
+<button class="sort-btn" onclick="sortFlights('savings')">📈 By Savings</button>
+<button class="sort-btn" onclick="sortFlights('miles')">⭐ By Miles</button>
+</div>
+
+<div id="results"></div>
 </div>
 
 <script>
 const MOCK_FLIGHTS = {
-'STL-CUN': [
-{ airline: 'Southwest', price: 250, miles: 15000, stops: 0 },
-{ airline: 'United', price: 280, miles: 22000, stops: 1 },
-{ airline: 'American', price: 265, miles: 25000, stops: 0 },
-{ airline: 'Delta', price: 290, miles: 20000, stops: 1 },
-{ airline: 'Qatar', price: 320, miles: 18000, stops: 1 }
+'STL-CUN-economy': [
+{ airline: 'Southwest', price: 250, miles: 15000, duration: '3h 45m', cabin: 'Economy' },
+{ airline: 'Delta', price: 275, miles: 20000, duration: '4h 10m', cabin: 'Economy' },
+{ airline: 'United', price: 280, miles: 22000, duration: '3h 50m', cabin: 'Economy' },
+{ airline: 'American', price: 265, miles: 25000, duration: '4h 30m', cabin: 'Economy' },
 ],
-'STL-LAX': [
-{ airline: 'Southwest', price: 320, miles: 25000, stops: 0 },
-{ airline: 'United', price: 350, miles: 30000, stops: 0 },
-{ airline: 'American', price: 340, miles: 32000, stops: 1 },
-{ airline: 'Delta', price: 330, miles: 28000, stops: 0 }
+'STL-CUN-business': [
+{ airline: 'Southwest', price: 650, miles: 45000, duration: '3h 45m', cabin: 'Business' },
+{ airline: 'Delta', price: 750, miles: 60000, duration: '4h 10m', cabin: 'Business' },
+{ airline: 'United', price: 800, miles: 65000, duration: '3h 50m', cabin: 'Business' },
+{ airline: 'Qatar', price: 920, miles: 80000, duration: '5h 20m', cabin: 'Business' },
 ],
-'STL-ORD': [
-{ airline: 'Southwest', price: 150, miles: 10000, stops: 0 },
-{ airline: 'United', price: 180, miles: 15000, stops: 0 },
-{ airline: 'American', price: 170, miles: 16000, stops: 1 },
-{ airline: 'Delta', price: 160, miles: 14000, stops: 0 }
+'STL-CUN-first': [
+{ airline: 'Emirates', price: 1800, miles: 120000, duration: '6h 15m', cabin: 'First' },
+{ airline: 'Qatar', price: 1900, miles: 130000, duration: '5h 45m', cabin: 'First' },
+{ airline: 'Singapore', price: 2100, miles: 140000, duration: '7h 30m', cabin: 'First' },
 ],
-'NYC-LAX': [
-{ airline: 'Southwest', price: 400, miles: 35000, stops: 0 },
-{ airline: 'United', price: 420, miles: 40000, stops: 0 },
-{ airline: 'American', price: 410, miles: 42000, stops: 1 }
-]
+'STL-LAX-economy': [
+{ airline: 'Southwest', price: 320, miles: 25000, duration: '4h 30m', cabin: 'Economy' },
+{ airline: 'United', price: 350, miles: 30000, duration: '4h 45m', cabin: 'Economy' },
+{ airline: 'Delta', price: 340, miles: 28000, duration: '4h 35m', cabin: 'Economy' },
+],
+'STL-LAX-business': [
+{ airline: 'United', price: 850, miles: 85000, duration: '4h 45m', cabin: 'Business' },
+{ airline: 'Delta', price: 920, miles: 90000, duration: '4h 35m', cabin: 'Business' },
+{ airline: 'American', price: 780, miles: 80000, duration: '5h 10m', cabin: 'Business' },
+],
+'STL-ORD-economy': [
+{ airline: 'Southwest', price: 120, miles: 8000, duration: '1h 15m', cabin: 'Economy' },
+{ airline: 'United', price: 140, miles: 10000, duration: '1h 20m', cabin: 'Economy' },
+{ airline: 'American', price: 135, miles: 9500, duration: '1h 25m', cabin: 'Economy' },
+],
+'NYC-LAX-economy': [
+{ airline: 'Southwest', price: 420, miles: 35000, duration: '5h 30m', cabin: 'Economy' },
+{ airline: 'United', price: 450, miles: 40000, duration: '5h 45m', cabin: 'Economy' },
+{ airline: 'Delta', price: 440, miles: 38000, duration: '5h 35m', cabin: 'Economy' },
+],
 };
 
 const VALUATIONS = {
@@ -66,43 +104,75 @@ const VALUATIONS = {
 'United': 0.0125,
 'American': 0.012,
 'Delta': 0.0118,
-'Qatar': 0.0155
+'Korean Air': 0.014,
+'Qatar': 0.0155,
+'Emirates': 0.015,
+'Singapore': 0.016,
 };
+
+let currentFlights = [];
+let currentSort = 'price';
 
 function searchFlights() {
 const origin = document.getElementById('origin').value.toUpperCase();
 const destination = document.getElementById('destination').value.toUpperCase();
-const key = `${origin}-${destination}`;
-const error = document.getElementById('error');
-const results = document.getElementById('results');
+const cabin = document.getElementById('cabin').value;
+const key = `${origin}-${destination}-${cabin}`;
 
-error.textContent = '';
-results.innerHTML = '';
+currentFlights = MOCK_FLIGHTS[key] || [];
+currentSort = 'price';
 
-if (!MOCK_FLIGHTS[key]) {
-error.textContent = `Try: ${Object.keys(MOCK_FLIGHTS).join(' or ')}`;
+if (currentFlights.length === 0) {
+document.getElementById('results').innerHTML = '<div class="no-results">No flights found. Try different airports or cabin class.</div>';
+document.getElementById('sortButtons').style.display = 'none';
 return;
 }
 
-const flights = MOCK_FLIGHTS[key];
-let html = `<h2>Flights from ${origin} to ${destination}</h2>`;
+displayFlights();
+document.getElementById('sortButtons').style.display = 'flex';
+}
 
-flights.forEach(f => {
-const pointsValue = (f.miles * VALUATIONS[f.airline]).toFixed(2);
-const savings = (f.price - pointsValue).toFixed(2);
+function sortFlights(sortBy) {
+currentSort = sortBy;
+document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+event.target.classList.add('active');
+displayFlights();
+}
+
+function displayFlights() {
+let sorted = [...currentFlights];
+
+if (currentSort === 'price') sorted.sort((a, b) => a.price - b.price);
+else if (currentSort === 'savings') sorted.sort((a, b) => {
+const savingsA = a.price - (a.miles * VALUATIONS[a.airline] / 100);
+const savingsB = b.price - (b.miles * VALUATIONS[b.airline] / 100);
+return savingsB - savingsA;
+});
+else if (currentSort === 'miles') sorted.sort((a, b) => a.miles - b.miles);
+
+let html = '';
+sorted.forEach(flight => {
+const pointsValue = Math.round(flight.miles * VALUATIONS[flight.airline] / 100);
+const savings = flight.price - pointsValue;
 html += `
-<div class="flight">
-<h3>${f.airline}</h3>
-<p><strong>Cash Price:</strong> $${f.price}</p>
-<p><strong>Miles Required:</strong> ${f.miles.toLocaleString()}</p>
-<p><strong>Points Value:</strong> $${pointsValue}</p>
-<p><strong>You Save:</strong> $${savings} using points!</p>
-<p><strong>Stops:</strong> ${f.stops === 0 ? 'Nonstop' : f.stops + ' stop(s)'}</p>
+<div class="flight-card">
+<div class="flight-header">
+<div class="airline">${flight.airline}</div>
+<div class="price">$${flight.price}</div>
+</div>
+<div class="flight-details">
+<div>Cabin: <strong>${flight.cabin}</strong></div>
+<div>Duration: <strong>${flight.duration}</strong></div>
+<div>Miles Needed: <strong>${flight.miles.toLocaleString()}</strong></div>
+</div>
+<div class="miles-value">
+<div>Points Value: $${pointsValue}</div>
+<div class="savings">Savings: $${savings}</div>
+</div>
 </div>
 `;
 });
-
-results.innerHTML = html;
+document.getElementById('results').innerHTML = html;
 }
 </script>
 </body>
