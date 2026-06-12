@@ -1,4 +1,157 @@
-l<!DOCTYPE html>
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight & Miles Optimizer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+color: #fff;
+min-height: 100vh;
+padding: 20px;
+}
+.container { max-width: 1200px; margin: 0 auto; }
+h1 { text-align: center; margin-bottom: 30px; color: #ffd700; }
+.search-box {
+background: rgba(255,255,255,0.1);
+padding: 25px;
+border-radius: 12px;
+margin-bottom: 30px;
+backdrop-filter: blur(10px);
+}
+.search-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+input, select {
+width: 100%;
+padding: 12px;
+border: 1px solid #ffd700;
+border-radius: 6px;
+background: rgba(255,255,255,0.9);
+color: #000;
+font-size: 14px;
+}
+button {
+background: #ffd700;
+color: #000;
+border: none;
+padding: 12px 30px;
+border-radius: 6px;
+cursor: pointer;
+font-weight: bold;
+width: 100%;
+font-size: 16px;
+}
+button:hover { background: #ffed4e; }
+.flights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+.flight-card {
+background: rgba(255,255,255,0.1);
+padding: 20px;
+border-radius: 10px;
+border-left: 4px solid #ffd700;
+backdrop-filter: blur(10px);
+}
+.flight-card h3 { color: #ffd700; margin-bottom: 10px; }
+.price { font-size: 24px; font-weight: bold; color: #ffd700; }
+.loading { text-align: center; font-size: 18px; }
+.error { color: #ff6b6b; text-align: center; padding: 20px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>✈️ Flight & Airline Miles Optimizer</h1>
+
+<div class="search-box">
+<div class="search-grid">
+<input type="text" id="origin" placeholder="From (STL, JFK, LAX)" value="STL">
+<input type="text" id="destination" placeholder="To (CUN, LAX, NYC)" value="CUN">
+<input type="date" id="departDate" value="2025-06-18">
+<input type="date" id="returnDate" value="2025-06-25">
+</div>
+<button onclick="searchFlights()">🔍 Search Flights</button>
+</div>
+
+<div id="results"></div>
+</div>
+
+<script>
+const AIRLINES = {
+SW: 'Southwest', UA: 'United', AA: 'American', DL: 'Delta',
+KE: 'Korean Air', QR: 'Qatar', EK: 'Emirates'
+};
+
+const VALUATIONS = {
+SW: 0.0135, UA: 0.0125, AA: 0.012, DL: 0.0118,
+KE: 0.014, QR: 0.0155, EK: 0.015
+};
+
+async function searchFlights() {
+const origin = document.getElementById('origin').value.toUpperCase();
+const destination = document.getElementById('destination').value.toUpperCase();
+const departDate = document.getElementById('departDate').value;
+const returnDate = document.getElementById('returnDate').value;
+const resultsDiv = document.getElementById('results');
+
+if (!origin || !destination || !departDate) {
+resultsDiv.innerHTML = '<div class="error">Please fill in all fields</div>';
+return;
+}
+
+resultsDiv.innerHTML = '<div class="loading">Searching flights...</div>';
+
+try {
+const [year, month, day] = departDate.split('-');
+const formattedDate = `${day}/${month}/${year}`;
+
+const [ryear, rmonth, rday] = returnDate.split('-');
+const formattedReturnDate = `${rday}/${rmonth}/${ryear}`;
+
+const url = `https://tequila-api.kiwi.com/v2/search?fly_from=${origin}&fly_to=${destination}&dateFrom=${formattedDate}&dateTo=${formattedReturnDate}&limit=15&partner=picky`;
+
+const response = await fetch(url);
+const data = await response.json();
+
+if (data.data && data.data.length > 0) {
+let html = '<div class="flights-grid">';
+
+data.data.forEach(flight => {
+const airline = flight.airlines[0] || 'Unknown';
+const price = flight.price;
+const duration = Math.floor(flight.duration.total / 3600) + 'h ' + Math.floor((flight.duration.total % 3600) / 60) + 'm';
+const stops = flight.route.length - 1;
+
+const milesEstimate = Math.round(flight.distance / 2);
+const pointsValue = Math.round(milesEstimate * 0.0125);
+const savings = Math.round(price - pointsValue);
+
+html += `
+<div class="flight-card">
+<h3>${airline}</h3>
+<p><strong>Price:</strong> $${price}</p>
+<p><strong>Duration:</strong> ${duration}</p>
+<p><strong>Stops:</strong> ${stops}</p>
+<p><strong>Est. Miles:</strong> ${milesEstimate}</p>
+<p><strong>Points Value:</strong> ${pointsValue}</p>
+<p><strong>Potential Savings:</strong> $${savings}</p>
+<p><small><a href="${flight.deep_link}" target="_blank" style="color: #ffd700;">Book on Kiwi</a></small></p>
+</div>
+`;
+});
+
+html += '</div>';
+resultsDiv.innerHTML = html;
+} else {
+resultsDiv.innerHTML = '<div class="error">No flights found. Try different dates or airports.</div>';
+}
+} catch (error) {
+resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+}
+}
+</script>
+</body>
+</html>l<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
