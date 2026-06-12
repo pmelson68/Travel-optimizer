@@ -1,0 +1,145 @@
+l<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Points Optimizer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { font-size: 36px; margin-bottom: 10px; color: #ffd700; }
+        .header p { font-size: 16px; color: #ccc; }
+        .search-box { background: #0f3460; padding: 30px; border-radius: 12px; margin-bottom: 40px; border: 2px solid #ffd700; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #ffd700; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ffd700; border-radius: 6px; background: #1a1a2e; color: #fff; font-size: 14px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        button { background: #ffd700; color: #000; padding: 12px 30px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 16px; transition: all 0.3s; }
+        button:hover { background: #ffed4e; transform: translateY(-2px); }
+        .results { display: grid; gap: 20px; }
+        .flight-card { background: #0f3460; padding: 20px; border-radius: 12px; border-left: 4px solid #ffd700; }
+        .flight-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .airline { font-weight: 600; font-size: 16px; color: #ffd700; }
+        .price { font-size: 20px; font-weight: 700; color: #00d4ff; }
+        .flight-details { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; font-size: 14px; }
+        .detail-item { background: #1a1a2e; padding: 10px; border-radius: 6px; }
+        .detail-label { color: #aaa; font-size: 12px; }
+        .detail-value { color: #ffd700; font-weight: 600; margin-top: 5px; }
+        .no-results { text-align: center; padding: 40px; color: #aaa; }
+        .loading { text-align: center; color: #ffd700; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✈️ Travel Points Optimizer</h1>
+            <p>Find the best flight deals using your airline miles & credit card points</p>
+        </div>
+        
+        <div class="search-box">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>From (Airport Code)</label>
+                    <input type="text" id="origin" value="STL" placeholder="e.g., STL, JFK, LAX">
+                </div>
+                <div class="form-group">
+                    <label>To (Airport Code)</label>
+                    <input type="text" id="destination" value="CUN" placeholder="e.g., CUN, LAX, NYC">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Depart Date</label>
+                    <input type="date" id="departDate">
+                </div>
+                <div class="form-group">
+                    <label>Return Date (optional)</label>
+                    <input type="date" id="returnDate">
+                </div>
+            </div>
+            
+            <button onclick="searchFlights()">🔍 Search Flights</button>
+        </div>
+        
+        <div id="results" class="results"></div>
+    </div>
+    
+    <script>
+        // Points valuation (your personal rates)
+        const VALUATIONS = {
+            SW: 0.0135, UA: 0.0125, AA: 0.012, DL: 0.0118,
+            KE: 0.014, QR: 0.0155, EK: 0.015
+        };
+        
+        const AIRLINES = {
+            SW: 'Southwest', UA: 'United', AA: 'American', DL: 'Delta',
+            KE: 'Korean Air', QR: 'Qatar', EK: 'Emirates'
+        };
+
+        function searchFlights() {
+            const origin = document.getElementById('origin').value.toUpperCase();
+            const destination = document.getElementById('destination').value.toUpperCase();
+            const departDate = document.getElementById('departDate').value;
+            
+            document.getElementById('results').innerHTML = '<div class="loading">Searching flights...</div>';
+            
+            // Kiwi API call
+            const url = `https://api.tequila.kiwi.com/v2/search?fly_from=${origin}&fly_to=${destination}&dateFrom=${departDate.split('-').reverse().join('/')}&dateTo=${departDate.split('-').reverse().join('/')}&curr=USD&limit=10`;
+            
+            fetch(url)
+                .then(res => res.json())
+                .then(data => displayResults(data, origin, destination))
+                .catch(err => {
+                    document.getElementById('results').innerHTML = `<div class="no-results">Error searching flights. Try again with valid airport codes.</div>`;
+                });
+        }
+        
+        function displayResults(data, origin, dest) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!data.data || data.data.length === 0) {
+                resultsDiv.innerHTML = '<div class="no-results">No flights found. Try different dates or airports.</div>';
+                return;
+            }
+            
+            let html = '';
+            data.data.slice(0, 10).forEach(flight => {
+                const airline = flight.airlines[0] || 'Unknown';
+                const price = Math.round(flight.price);
+                
+                html += `
+                    <div class="flight-card">
+                        <div class="flight-header">
+                            <div class="airline">${airline}</div>
+                            <div class="price">$${price}</div>
+                        </div>
+                        <div class="flight-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Departure</div>
+                                <div class="detail-value">${new Date(flight.local_departure).toLocaleTimeString()}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Duration</div>
+                                <div class="detail-value">${Math.floor(flight.duration.total / 3600)}h ${Math.floor((flight.duration.total % 3600) / 60)}m</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Stops</div>
+                                <div class="detail-value">${flight.route.length - 1 === 0 ? 'Nonstop' : flight.route.length - 1}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // Set today's date as default
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('departDate').value = today;
+    </script>
+</body>
+</html>
