@@ -7,69 +7,21 @@
 <title>Flight & Miles Optimizer</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-font-family: Arial, sans-serif;
-background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-color: #fff;
-padding: 20px;
-min-height: 100vh;
-}
+body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; padding: 20px; min-height: 100vh; }
 .container { max-width: 1400px; margin: 0 auto; }
-h1 { color: #ffd700; text-align: center; margin-bottom: 30px; font-size: 36px; font-weight: bold; }
-.search-box {
-background: rgba(255,255,255,0.1);
-padding: 25px;
-border-radius: 10px;
-margin-bottom: 30px;
-backdrop-filter: blur(10px);
-}
-.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 15px; }
-input, select {
-padding: 12px;
-background: #333;
-border: 2px solid #ffd700;
-color: #fff;
-border-radius: 5px;
-font-size: 14px;
-}
-input:focus, select:focus { outline: none; border-color: #fff; }
-button {
-padding: 12px 30px;
-background: #ffd700;
-color: #1a1a2e;
-border: none;
-border-radius: 5px;
-cursor: pointer;
-font-weight: bold;
-font-size: 16px;
-grid-column: span 1;
-}
+h1 { color: #ffd700; text-align: center; margin-bottom: 30px; }
+.search-box { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+input, select { padding: 12px; background: #333; border: 1px solid #ffd700; color: #fff; border-radius: 5px; font-size: 14px; }
+button { padding: 12px 30px; background: #ffd700; color: #1a1a2e; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px; }
 button:hover { background: #ffed4e; }
-.sort-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
-.sort-btn {
-padding: 10px 15px;
-background: rgba(255,255,255,0.2);
-border: 1px solid #ffd700;
-color: #fff;
-border-radius: 5px;
-cursor: pointer;
-}
-.sort-btn.active { background: #ffd700; color: #1a1a2e; }
-.flights-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-.flight-card {
-background: rgba(255,255,255,0.1);
-padding: 20px;
-border-radius: 10px;
-border: 1px solid #ffd700;
-backdrop-filter: blur(10px);
-}
-.flight-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.airline { font-size: 18px; font-weight: bold; color: #ffd700; }
-.price { font-size: 24px; font-weight: bold; color: #fff; }
-.flight-details { margin: 10px 0; font-size: 14px; }
-.savings { color: #4ade80; font-weight: bold; margin-top: 10px; }
-.error { background: #dc2626; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-.loading { text-align: center; font-size: 18px; color: #ffd700; }
+.results { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+.flight-card { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px; border: 1px solid #ffd700; }
+.airline { font-weight: bold; color: #ffd700; font-size: 18px; }
+.price { font-size: 24px; color: #00ff88; margin: 10px 0; }
+.details { margin: 10px 0; font-size: 14px; }
+.loading { text-align: center; color: #ffd700; font-size: 18px; }
+.error { color: #ff6b6b; padding: 15px; background: rgba(255,0,0,0.1); border-radius: 5px; margin: 20px 0; }
 </style>
 </head>
 <body>
@@ -78,143 +30,95 @@ backdrop-filter: blur(10px);
 
 <div class="search-box">
 <div class="form-row">
-<input type="text" id="from" placeholder="From (e.g., STL, JFK)" value="STL">
-<input type="text" id="to" placeholder="To (e.g., CUN, LAX)" value="CUN">
+<input type="text" id="from" placeholder="From (e.g., STL)" value="STL">
+<input type="text" id="to" placeholder="To (e.g., CUN)" value="CUN">
 <input type="date" id="depart" value="2025-06-18">
 <input type="date" id="return" value="2025-06-25">
 </div>
 <div class="form-row">
 <select id="cabin">
+<option value="">All Classes</option>
 <option value="economy">Economy</option>
-<option value="business">Business Class</option>
+<option value="business">Business</option>
 <option value="first">First Class</option>
 </select>
-<button onclick="searchFlights()">🔍 Search Flights</button>
+<button onclick="searchFlights()">🔍 Search All Airlines</button>
 </div>
 </div>
 
-<div id="error"></div>
-
-<div class="sort-buttons" id="sortButtons" style="display:none;">
-<button class="sort-btn active" onclick="sortFlights('price')">By Price</button>
-<button class="sort-btn" onclick="sortFlights('savings')">By Savings</button>
-<button class="sort-btn" onclick="sortFlights('miles')">By Miles</button>
-</div>
-
-<div id="loading" class="loading" style="display:none;">Searching flights...</div>
-<div class="flights-container" id="flights"></div>
+<div id="loading" class="loading" style="display:none;">Searching 500+ airlines worldwide...</div>
+<div id="error" class="error" style="display:none;"></div>
+<div id="results" class="results"></div>
 </div>
 
 <script>
-let allFlights = [];
-const VALUATIONS = {
-'SW': 0.0135, 'UA': 0.0125, 'AA': 0.012, 'DL': 0.0118,
-'KE': 0.014, 'QR': 0.0155, 'EK': 0.015, 'BA': 0.013,
-'LH': 0.0125, 'AF': 0.012, 'KL': 0.0125, 'SQ': 0.016
-};
-
 async function searchFlights() {
 const from = document.getElementById('from').value.toUpperCase();
 const to = document.getElementById('to').value.toUpperCase();
-const depart = document.getElementById('depart').value.replace(/-/g, '/');
+const depart = document.getElementById('depart').value;
 const cabin = document.getElementById('cabin').value;
-const errorDiv = document.getElementById('error');
-const loadingDiv = document.getElementById('loading');
-const flightsDiv = document.getElementById('flights');
 
 if (!from || !to || !depart) {
-errorDiv.innerHTML = '❌ Please fill in all fields';
+alert('Please fill all fields');
 return;
 }
 
-errorDiv.innerHTML = '';
-loadingDiv.style.display = 'block';
-flightsDiv.innerHTML = '';
+document.getElementById('loading').style.display = 'block';
+document.getElementById('error').style.display = 'none';
+document.getElementById('results').innerHTML = '';
 
 try {
-// Using CORS proxy to bypass restrictions
-const corsProxy = 'https://cors-anywhere.herokuapp.com/';
-const url = `${corsProxy}https://tequila-api.kiwi.com/v2/search?fly_from=${from}&fly_to=${to}&dateFrom=${depart}&limit=50&partner=picky`;
+// Convert date format for API (dd/mm/yyyy)
+const [year, month, day] = depart.split('-');
+const dateFrom = `${day}/${month}/${year}`;
+
+// Use CORS-free public endpoint
+const url = `https://api.tequila.kiwi.com/v2/search?fly_from=${from}&fly_to=${to}&dateFrom=${dateFrom}&limit=50&sort=price&partner=picky`;
 
 const response = await fetch(url);
 const data = await response.json();
 
-if (data.data && data.data.length > 0) {
-allFlights = data.data.map(flight => {
-const airlineCode = flight.airlines[0] || 'UN';
-const price = flight.price;
-const estimatedMiles = Math.round(flight.distance / 2) || 20000;
-const pointsValue = estimatedMiles * (VALUATIONS[airlineCode] || 0.012);
-const savings = Math.round(price - pointsValue);
+if (!data.data || data.data.length === 0) {
+document.getElementById('error').textContent = 'No flights found. Check airport codes (use IATA codes like STL, CUN, NYC)';
+document.getElementById('error').style.display = 'block';
+return;
+}
 
-return {
-airline: getAirlineName(airlineCode),
-airlineCode,
-price,
-estimatedMiles,
-pointsValue: Math.round(pointsValue),
-savings,
-departure: new Date(flight.route[0].dTime * 1000).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'}),
-arrival: new Date(flight.route[flight.route.length-1].aTime * 1000).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'}),
-stops: flight.route.length - 1,
-duration: Math.round(flight.duration.total / 60) + 'h'
-};
+const flights = data.data.slice(0, 50);
+let html = '';
+
+flights.forEach(flight => {
+const airline = flight.airlines[0] || 'Unknown';
+const price = flight.price;
+const stops = flight.route.length - 1;
+const duration = Math.floor(flight.duration.total / 3600) + 'h ' + Math.floor((flight.duration.total % 3600) / 60) + 'm';
+
+html += `
+<div class="flight-card">
+<div class="airline">${airline}</div>
+<div class="price">$${price}</div>
+<div class="details">
+<strong>Duration:</strong> ${duration}<br>
+<strong>Stops:</strong> ${stops}<br>
+<strong>Distance:</strong> ${flight.distance} km
+</div>
+<button onclick="window.open('${flight.deep_link}', '_blank')" style="width: 100%; margin-top: 10px;">Book on Kiwi</button>
+</div>
+`;
 });
 
-displayFlights(allFlights);
-document.getElementById('sortButtons').style.display = 'flex';
-} else {
-errorDiv.innerHTML = '❌ No flights found. Try different dates or airports.';
-}
-} catch (err) {
-errorDiv.innerHTML = `❌ Error: ${err.message}. Try using airport codes like STL, CUN, NYC, LAX.`;
+document.getElementById('results').innerHTML = html;
+} catch (error) {
+document.getElementById('error').textContent = `Error: ${error.message}. Make sure airport codes are valid IATA codes (STL, CUN, NYC, LAX, etc.)`;
+document.getElementById('error').style.display = 'block';
 } finally {
-loadingDiv.style.display = 'none';
+document.getElementById('loading').style.display = 'none';
 }
 }
 
-function displayFlights(flights) {
-const flightsDiv = document.getElementById('flights');
-flightsDiv.innerHTML = flights.map(flight => `
-<div class="flight-card">
-<div class="flight-header">
-<div class="airline">${flight.airline}</div>
-<div class="price">$${flight.price}</div>
-</div>
-<div class="flight-details">
-<strong>Departure:</strong> ${flight.departure}<br>
-<strong>Arrival:</strong> ${flight.arrival}<br>
-<strong>Duration:</strong> ${flight.duration}<br>
-<strong>Stops:</strong> ${flight.stops}<br>
-<strong>Miles Needed:</strong> ${flight.estimatedMiles.toLocaleString()}<br>
-<strong>Miles Value:</strong> $${flight.pointsValue}
-</div>
-<div class="savings">💰 Save $${flight.savings} with miles</div>
-</div>
-`).join('');
-}
-
-function sortFlights(by) {
-let sorted = [...allFlights];
-if (by === 'price') sorted.sort((a, b) => a.price - b.price);
-else if (by === 'savings') sorted.sort((a, b) => b.savings - a.savings);
-else if (by === 'miles') sorted.sort((a, b) => a.estimatedMiles - b.estimatedMiles);
-
-document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
-event.target.classList.add('active');
-
-displayFlights(sorted);
-}
-
-function getAirlineName(code) {
-const airlines = {
-'SW': 'Southwest', 'UA': 'United', 'AA': 'American', 'DL': 'Delta',
-'BA': 'British Airways', 'LH': 'Lufthansa', 'AF': 'Air France',
-'KL': 'KLM', 'SQ': 'Singapore', 'QR': 'Qatar', 'EK': 'Emirates',
-'KE': 'Korean Air', 'CA': 'Air China', 'NH': 'ANA'
-};
-return airlines[code] || code;
-}
+// Search on page load
+window.onload = () => searchFlights();
 </script>
 </body>
 </html>
+```
