@@ -1,5 +1,4 @@
-
-json
+```json
 {
 "name": "flight-optimizer",
 "version": "1.0.0",
@@ -13,4 +12,5 @@ json
 "next": "^14.0.0"
 }
 }
+```
 
